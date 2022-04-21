@@ -3,6 +3,7 @@ from discord.ext.commands import Cog
 from aiocron import crontab
 from aiohttp import ClientSession
 from json import loads, dumps
+from environs import Env
 
 
 class Calendar(Cog, name="Calendar"):
@@ -11,7 +12,10 @@ class Calendar(Cog, name="Calendar"):
         Initializes the Calendar cog
         :param bot: Bot that the cog shall attach to
         """
+        env = Env()
+        env.read_env()
         self.bot = bot
+        self.channel_id = env("CHANNEL_ID")
         self.base_api_url = "https://discord.com/api/v8"
         self.auth_headers = {
             "Authorization": f"Bot {bot.token}",
@@ -37,9 +41,9 @@ class Calendar(Cog, name="Calendar"):
                 await self.create_guild_event(
                     event_name=iEvent.summary,
                     event_description=iEvent.description,
-                    event_start_time=str(iEvent.start),
-                    event_end_time=str(iEvent.end),
-                    event_channel_id="966745318702059571",
+                    event_start_time=iEvent.start.strftime("%Y-%m-%dT%H:%M:%S%Z"),
+                    event_end_time=iEvent.end.strftime("%Y-%m-%dT%H:%M:%S%Z"),
+                    event_channel_id=self.channel_id,
                     event_metadata={"location": iEvent.location},
                 )
             else:
@@ -88,7 +92,7 @@ class Calendar(Cog, name="Calendar"):
                 "entity_type": 3,
             }
         )
-
+        print(event_data)
         async with ClientSession(headers=self.auth_headers) as session:
             try:
                 async with session.post(self.event_url, data=event_data) as response:
