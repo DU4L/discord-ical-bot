@@ -17,12 +17,12 @@ class MyBot(Bot):
         self.iCal_url = iCal_url
 
     async def on_ready(
-        self,
+        self
     ) -> None:
         """
         Called when bot is ready to be used.
         """
-        print("Logged in as" + self.user.name)
+        print("Logged in as " + self.user.name)
         cal = Calendar(self)
         print(await cal.getGuildEvents())
         await cal.createEvent()

@@ -12,7 +12,6 @@ class Calendar(Cog, name="Calendar"):
         Initializes the Calendar cog
         :param bot: Bot that the cog shall attach to
         """
-        print("Calendar cog loaded")
         self.bot = bot
         self.base_api_url = "https://discord.com/api/v8"
         self.auth_headers = {
@@ -21,10 +20,10 @@ class Calendar(Cog, name="Calendar"):
             "Content-Type": "application/json",
         }
         self.event_url = f"{self.base_api_url}/guilds/{bot.guild}/scheduled-events"
-        print(f"{bot.guild}")
+        print("Calendar cog loaded")
 
     # crontab that runs every 3 days
-    @crontab('* * */3 * *')
+    # @crontab('* * */3 * *')
     async def createEvent(self) -> None:
         """
         Creates events in the guild if they don't exist based on an iCal.
@@ -53,9 +52,7 @@ class Calendar(Cog, name="Calendar"):
             try:
                 async with session.get(self.event_url) as response:
                     response.raise_for_status()
-                    if response.status != 200:
-                        raise Exception(f"Response status code: {response.status}")
-                    response_list = json.loads(await response.read())
+                    response_list = loads(await response.read())
             except Exception as e:
                 print(f"EXCEPTION: {e}")
             finally:
@@ -82,7 +79,7 @@ class Calendar(Cog, name="Calendar"):
         :param event_metadata: event_metadata={'location': 'YOUR_LOCATION_NAME'} - Dictionary of metadata for the event
         :param event_channel_id: ID of the channel the event takes place in
         """
-        event_data = json.dumps(
+        event_data = dumps(
             {
                 "name": event_name,
                 "privacy_level": event_privacy_level,
