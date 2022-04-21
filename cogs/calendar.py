@@ -3,7 +3,6 @@ from discord.ext.commands import Cog
 from aiocron import crontab
 from aiohttp import ClientSession
 from json import loads, dumps
-# import time
 
 
 class Calendar(Cog, name="Calendar"):
@@ -46,15 +45,13 @@ class Calendar(Cog, name="Calendar"):
             else:
                 print("Event already exists")
 
-    async def getGuildEvents(self) -> list[dict]:
+    async def getGuildEvents(self) -> list:
         """Returns a list of dictionary of events in the guild."""
         async with ClientSession(headers=self.auth_headers) as session:
             try:
                 async with session.get(self.event_url) as response:
                     response.raise_for_status()
                     response_list = loads(await response.read())
-            except Exception as e:
-                print(f"EXCEPTION: {e}")
             finally:
                 await session.close()
         return response_list
@@ -98,7 +95,5 @@ class Calendar(Cog, name="Calendar"):
                     response.raise_for_status()
                     if response.status != 200:
                         raise Exception(f"Response status code: {response.status}")
-            except Exception as e:
-                print(f"EXCEPTION: {e}")
             finally:
                 await session.close()

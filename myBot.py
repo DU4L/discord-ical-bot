@@ -16,13 +16,10 @@ class MyBot(Bot):
         self.guild = guild
         self.iCal_url = iCal_url
 
-    async def on_ready(
-        self
-    ) -> None:
+    async def on_ready(self) -> None:
         """
         Called when bot is ready to be used.
         """
         print("Logged in as " + self.user.name)
         cal = Calendar(self)
-        print(await cal.getGuildEvents())
         await cal.createEvent()
