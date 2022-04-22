@@ -1,8 +1,10 @@
 from icalevents.icalevents import events
 from discord.ext.commands import Cog
-from aiocron import crontab
+from discord.ext.tasks import loop
 from aiohttp import ClientSession, ClientResponseError
 from json import loads, dumps
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 import logging
 
 
@@ -25,16 +27,23 @@ class Calendar(Cog, name="Calendar"):
             "Content-Type": "application/json",
         }
         self.event_url = f"{self.base_api_url}/guilds/{bot.guild}/scheduled-events"
+        self.createEvent.start()
 
-    # crontab that runs daily
-    @crontab("0 0 * * *")
+    # Runs five minutes
+    @loop(minutes=5)
     async def createEvent(self) -> None:
         """
         Summary:
         Creates events in the guild, if they don't exist based on an iCal feed.
         """
-        iCalEvents = events(self.bot.iCal_url)
-        logging.info("Fetched iCal events")
+        try:
+            iCalEvents = events(
+                url=self.bot.iCal_url,
+                start=datetime.now(),
+                end=datetime.now() + relativedelta(days=+7),
+            )
+        finally:
+            logging.info("Fetched iCal events")
         serverEvents = await self.getGuildEvents()
         for iEvent in iCalEvents:
             if iEvent.summary not in [event["name"] for event in serverEvents]:
@@ -64,6 +73,11 @@ class Calendar(Cog, name="Calendar"):
                 )
             else:
                 logging.info("Event already exists")
+
+    @createEvent.before_loop
+    async def before_printer(self) -> None:
+        logging.info("waiting for bot to be ready")
+        await self.bot.wait_until_ready()
 
     async def getGuildEvents(self) -> list:
         """

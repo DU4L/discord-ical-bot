@@ -1,10 +1,13 @@
+import logging
 from myBot import MyBot
 from environs import Env
 from cogs.calendar import Calendar
+from logging import basicConfig
 
 
 def main() -> None:
     """Main function."""
+    basicConfig(level=logging.INFO)
     env = Env()
     env.read_env()
     token = env.str("BOT_TOKEN")
