@@ -1,7 +1,7 @@
 from icalevents.icalevents import events
 from discord.ext.commands import Cog
 from aiocron import crontab
-from aiohttp import ClientSession
+from aiohttp import ClientSession, ClientResponseError
 from json import loads, dumps
 import logging
 
@@ -78,24 +78,22 @@ class Calendar(Cog, name="Calendar"):
                     response.raise_for_status()
                     response_list = loads(await response.read())
                     logging.info("Fetched server events successfully")
-            except Exception as e:
-                logging.error(
-                    f"Failed to fetch events from the guild. Error: {e}"
-                )
+            except ClientResponseError:
+                logging.error("Failed to fetch events from the guild")
             finally:
                 await session.close()
         return response_list
 
     async def create_guild_event(
-            self,
-            event_name: str,
-            event_description: str,
-            event_start_time: str,
-            event_end_time: str,
-            event_metadata: dict,
-            event_channel_id: str,
-            event_type: int,
-            event_privacy_level=2,
+        self,
+        event_name: str,
+        event_description: str,
+        event_start_time: str,
+        event_end_time: str,
+        event_metadata: dict,
+        event_channel_id: str,
+        event_type: int,
+        event_privacy_level=2,
     ) -> None:
         """
         Summary:
@@ -131,13 +129,12 @@ class Calendar(Cog, name="Calendar"):
         async with ClientSession(headers=self.auth_headers) as session:
             try:
                 async with session.post(
-                        self.event_url, data=dumps(event_data)
+                    self.event_url, data=dumps(event_data)
                 ) as response:
                     response.raise_for_status()
                     logging.info("Created event successfully")
-            except Exception as e:
-                logging.error(
-                    f"Failed to create event. Error: {e}"
-                )
+
+            except ClientResponseError:
+                logging.error("Failed to create event.")
             finally:
                 await session.close()
