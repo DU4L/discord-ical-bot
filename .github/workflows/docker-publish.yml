@@ -10,7 +10,7 @@ on:
   pull_request:
 
 jobs:
-  front:
+  docker-publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
