@@ -72,9 +72,12 @@ class Calendar(Cog, name="iCal Creator"):
         """
         logging.info("Checking if bot is ready")
         await self.bot.wait_until_ready()
-        self.iCal_events = await self.get_iCal_events()
+        self.iCal_events = await self.get_iCal_events(
+            start=datetime.now(), end=datetime.now() + relativedelta(days=+7)
+        )
         self.server_events = await self.get_guild_events()
 
+    # Runs every 5 minutes
     @loop(minutes=5)
     async def delete_event(self) -> None:
         """
@@ -82,9 +85,9 @@ class Calendar(Cog, name="iCal Creator"):
         Deletes events in the guild, if they don't exist based on an iCal feed.
 
         """
-        for event in [event["name"] for event in self.server_events]:
-            if event not in [iEvent.summary for iEvent in self.iCal_events]:
-                logging.info(f"Deleting event {event}")
+        for event in self.server_events:
+            if event["name"] not in [iEvent.summary for iEvent in self.iCal_events]:
+                logging.info(f"Deleting event {event['name']}")
                 await self.delete_guild_event(event)
 
     @delete_event_event.before_loop
@@ -98,7 +101,7 @@ class Calendar(Cog, name="iCal Creator"):
         self.iCal_events = await self.get_iCal_events()
         self.server_events = await self.get_guild_events()
 
-    async def get_iCal_events(self) -> list:
+    async def get_iCal_events(self, start=None, end=None) -> list:
         """
         Summary:
         Fetches the events from the iCal feed
@@ -110,8 +113,8 @@ class Calendar(Cog, name="iCal Creator"):
             logging.info("trying to get iCal events")
             return events(
                 url=self.iCal_url,
-                start=datetime.now(),
-                end=datetime.now() + relativedelta(days=+7),
+                start=start,
+                end=end,
             )
         finally:
             logging.info("Fetched iCal events")
@@ -137,15 +140,15 @@ class Calendar(Cog, name="iCal Creator"):
         return response_list
 
     async def create_guild_event(
-            self,
-            name: str,
-            description: str,
-            start_time: str,
-            end_time: str,
-            metadata: dict,
-            channel_id: str,
-            type_id: int,
-            privacy_level=2,
+        self,
+        name: str,
+        description: str,
+        start_time: str,
+        end_time: str,
+        metadata: dict,
+        channel_id: str,
+        type_id: int,
+        privacy_level=2,
     ) -> None:
         """
         Summary:
@@ -178,12 +181,31 @@ class Calendar(Cog, name="iCal Creator"):
         async with ClientSession(headers=self.auth_headers) as session:
             try:
                 async with session.post(
-                        self.event_url, data=dumps(event_data)
+                    self.event_url, data=dumps(event_data)
                 ) as response:
                     response.raise_for_status()
                     logging.info("Created event successfully")
 
             except ClientResponseError:
                 logging.error("Failed to create event.")
+            finally:
+                await session.close()
+
+    async def delete_guild_event(self, event: dict) -> None:
+        """
+        Summary:
+        Deletes an event in Discord.
+
+        Args:
+            event: dict: Event to delete
+        """
+        async with ClientSession(headers=self.auth_headers) as session:
+            try:
+                async with session.delete(self.event_url + event["id"]) as response:
+                    response.raise_for_status()
+                    logging.info("Deleted event successfully")
+
+            except ClientResponseError:
+                logging.error("Failed to delete event.")
             finally:
                 await session.close()
