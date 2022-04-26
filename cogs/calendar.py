@@ -90,7 +90,7 @@ class Calendar(Cog, name="iCal Creator"):
                 logging.info(f"Deleting event {event['name']}")
                 await self.delete_guild_event(event)
 
-    @delete_event_event.before_loop
+    @delete_event.before_loop
     async def before_delete_event(self) -> None:
         """
         Summary:
