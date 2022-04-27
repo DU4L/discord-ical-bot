@@ -37,8 +37,27 @@ class Calendar(Cog, name="iCal Creator"):
         self.event_url = f"{self.base_api_url}/guilds/{bot.guild}/scheduled-events"
         self.create_event.start()
 
-    # Runs every five minutes
     @loop(minutes=5)
+    async def main_loop(self):
+        await self.create_event()
+        self.server_events = await self.get_guild_events()
+        await self.delete_event()
+        self.server_events = await self.get_guild_events()
+        await self.update_event()
+
+    @main_loop.before_loop()
+    async def before_main_loop(self) -> None:
+        """
+        Summary:
+        Runs before the main_loop starts and fetches the iCal and server events
+        """
+        logging.info("Checking if bot is ready")
+        await self.bot.wait_until_ready()
+        self.iCal_events = await self.get_iCal_events(
+            start=datetime.now(), end=datetime.now() + relativedelta(days=+7)
+        )
+        self.server_events = await self.get_guild_events()
+
     async def create_event(self) -> None:
         """
         Summary:
@@ -64,42 +83,41 @@ class Calendar(Cog, name="iCal Creator"):
             else:
                 logging.info("Event already exists")
 
-    @create_event.before_loop
-    async def before_create_event(self) -> None:
-        """
-        Summary:
-        Runs before the create_event loop starts and fetches the iCal and server events
-        """
-        logging.info("Checking if bot is ready")
-        await self.bot.wait_until_ready()
-        self.iCal_events = await self.get_iCal_events(
-            start=datetime.now(), end=datetime.now() + relativedelta(days=+7)
-        )
-        self.server_events = await self.get_guild_events()
-
-    # Runs every 5 minutes
-    @loop(minutes=5)
     async def delete_event(self) -> None:
         """
         Summary:
         Deletes events in the guild, if they don't exist based on an iCal feed.
-
         """
         for event in self.server_events:
             if event["name"] not in [iEvent.summary for iEvent in self.iCal_events]:
                 logging.info(f"Deleting event {event['name']}")
                 await self.delete_guild_event(event)
 
-    @delete_event.before_loop
-    async def before_delete_event(self) -> None:
+    async def update_event(self) -> None:
         """
         Summary:
-        Runs before the delete_event loop starts and fetches the iCal and server events
+        Updates event information in the guild based on iCal feed.
         """
-        logging.info("Checking if bot is ready")
-        await self.bot.wait_until_ready()
-        self.iCal_events = await self.get_iCal_events()
-        self.server_events = await self.get_guild_events()
+        for iEvent in self.iCal_events:
+            for event in self.server_events:
+
+                update_data = {}
+
+                if iEvent.summary == event["name"]:
+                    if iEvent.location != event["metadata"]["location"]:
+                        update_data["metadata"] = {"location": iEvent.location}
+
+                    if iEvent.start != event["scheduled_start_time"]:
+                        update_data["scheduled_start_time"] = iEvent.start
+
+                    if iEvent.end != event["scheduled_end_time"]:
+                        update_data["scheduled_end_time"] = iEvent.end
+
+                    if iEvent.description != event["description"]:
+                        update_data["description"] = iEvent.description
+
+                    logging.info(f"Updating the event: {iEvent.summary}")
+                    await self.update_guild_event(event["id"], update_data)
 
     async def get_iCal_events(self, start=None, end=None) -> list:
         """
@@ -209,3 +227,25 @@ class Calendar(Cog, name="iCal Creator"):
                 logging.error("Failed to delete event.")
             finally:
                 await session.close()
+
+    async def update_guild_event(self, eventId: str, update_data: dict) -> None:
+        """
+        Summary:
+        Updates the provided information for a specific event.
+        Args:
+            eventId: str: Event that should be updated
+            update_data: dict: Information that needs to be updated
+        """
+        if update_data != {}:
+            async with ClientSession(headers=self.auth_headers) as session:
+                try:
+                    async with session.patch(
+                        self.event_url + eventId, data=dumps(update_data)
+                    ) as response:
+                        response.raise_for_status()
+                        logging.info("Updated event successfully")
+
+                except ClientResponseError:
+                    logging.error("Failed to update event.")
+                finally:
+                    await session.close()
