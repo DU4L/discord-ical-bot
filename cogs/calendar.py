@@ -9,9 +9,11 @@ import logging
 
 
 class Calendar(Cog, name="iCal Creator"):
-
     TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
     TIME_ZONE = "+00"
+
+    iCal_events: list
+    server_events: list
 
     def __init__(self, bot, iCal_url: str, channel_id: str) -> None:
         """
@@ -42,17 +44,8 @@ class Calendar(Cog, name="iCal Creator"):
         Summary:
         Creates events in the guild, if they don't exist based on an iCal feed.
         """
-        try:
-            iCal_events = events(
-                url=self.iCal_url,
-                start=datetime.now(),
-                end=datetime.now() + relativedelta(days=+7),
-            )
-        finally:
-            logging.info("Fetched iCal events")
-        server_events = await self.get_guild_events()
-        for iEvent in iCal_events:
-            if iEvent.summary not in [event["name"] for event in server_events]:
+        for iEvent in self.iCal_events:
+            if iEvent.summary not in [event["name"] for event in self.server_events]:
                 if iEvent.location in ["Discord", "discord"]:
                     event_type = 2
                 else:
@@ -72,12 +65,63 @@ class Calendar(Cog, name="iCal Creator"):
                 logging.info("Event already exists")
 
     @create_event.before_loop
-    async def before_printer(self) -> None:
-        logging.info("waiting for bot to be ready")
+    async def before_create_event(self) -> None:
+        """
+        Summary:
+        Runs before the create_event loop starts and fetches the iCal and server events
+        """
+        logging.info("Checking if bot is ready")
         await self.bot.wait_until_ready()
+        self.iCal_events = await self.get_iCal_events(
+            start=datetime.now(), end=datetime.now() + relativedelta(days=+7)
+        )
+        self.server_events = await self.get_guild_events()
+
+    # Runs every 5 minutes
+    @loop(minutes=5)
+    async def delete_event(self) -> None:
+        """
+        Summary:
+        Deletes events in the guild, if they don't exist based on an iCal feed.
+
+        """
+        for event in self.server_events:
+            if event["name"] not in [iEvent.summary for iEvent in self.iCal_events]:
+                logging.info(f"Deleting event {event['name']}")
+                await self.delete_guild_event(event)
+
+    @delete_event.before_loop
+    async def before_delete_event(self) -> None:
+        """
+        Summary:
+        Runs before the delete_event loop starts and fetches the iCal and server events
+        """
+        logging.info("Checking if bot is ready")
+        await self.bot.wait_until_ready()
+        self.iCal_events = await self.get_iCal_events()
+        self.server_events = await self.get_guild_events()
+
+    async def get_iCal_events(self, start=None, end=None) -> list:
+        """
+        Summary:
+        Fetches the events from the iCal feed
+
+        Returns:
+            list: A list of iCal events
+        """
+        try:
+            logging.info("trying to get iCal events")
+            return events(
+                url=self.iCal_url,
+                start=start,
+                end=end,
+            )
+        finally:
+            logging.info("Fetched iCal events")
 
     async def get_guild_events(self) -> list:
         """
+        Summary:
         Fetches all events in the guild
 
         Returns:
@@ -144,5 +188,24 @@ class Calendar(Cog, name="iCal Creator"):
 
             except ClientResponseError:
                 logging.error("Failed to create event.")
+            finally:
+                await session.close()
+
+    async def delete_guild_event(self, event: dict) -> None:
+        """
+        Summary:
+        Deletes an event in Discord.
+
+        Args:
+            event: dict: Event to delete
+        """
+        async with ClientSession(headers=self.auth_headers) as session:
+            try:
+                async with session.delete(self.event_url + event["id"]) as response:
+                    response.raise_for_status()
+                    logging.info("Deleted event successfully")
+
+            except ClientResponseError:
+                logging.error("Failed to delete event.")
             finally:
                 await session.close()
