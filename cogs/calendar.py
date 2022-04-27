@@ -30,7 +30,7 @@ class Calendar(Cog, name="iCal Creator"):
         self.base_api_url = "https://discord.com/api/v8"
         self.auth_headers = {
             "Authorization": f"Bot {bot.token}",
-            "User-Agent": "DiscordBot Python/3.9 aiohttp/3.8.1",
+            "User-Agent": "DiscordBot Python/3.8 aiohttp/3.8.1",
             "Content-Type": "application/json",
         }
         self.iCal_url = iCal_url
