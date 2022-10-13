@@ -66,7 +66,7 @@ class Calendar(Cog, name="iCal Creator"):
                     end_time=iEvent.end.strftime(self.TIME_FORMAT + self.TIME_ZONE),
                     channel_id=self.channel_id,
                     type_id=event_type,
-                    metadata={"location": iEvent.location},
+                    metadata={"location": iEvent.location or "¯\_(ツ)_/¯"},
                 )
             else:
                 logging.info("Event already exists")
@@ -134,11 +134,13 @@ class Calendar(Cog, name="iCal Creator"):
             event_data["scheduled_end_time"] = end_time
             event_data["entity_metadata"] = metadata
 
+        logging.error(event_data)
         async with ClientSession(headers=self.auth_headers) as session:
             try:
                 async with session.post(
                     self.event_url, data=dumps(event_data)
                 ) as response:
+                    logging.info(response)
                     response.raise_for_status()
                     logging.info("Created event successfully")
 
