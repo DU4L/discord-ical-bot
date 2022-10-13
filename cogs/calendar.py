@@ -87,7 +87,7 @@ class Calendar(Cog, name="iCal Creator"):
         """
         for event in self.server_events:
             if event["name"] not in [iEvent.summary for iEvent in self.iCal_events]:
-                logging.info(f"Deleting event {event['name']}")
+                logging.info("Deleting event %s", event['name'])
                 await self.delete_guild_event(event)
 
     @delete_event.before_loop
