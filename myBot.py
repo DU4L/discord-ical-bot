@@ -23,4 +23,4 @@ class MyBot(Bot):
         Summary:
         Called when bot is ready to be used.
         """
-        logging.info(f"Logged in as {self.user}")
+        logging.info("Logged in as %s", self.user)

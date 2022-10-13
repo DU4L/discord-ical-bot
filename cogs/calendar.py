@@ -58,7 +58,7 @@ class Calendar(Cog, name="iCal Creator"):
                 else:
                     event_type = 3
 
-                logging.info(f"Creating event {iEvent.summary}")
+                logging.info("Creating event %s", iEvent.summary)
                 await self.create_guild_event(
                     name=iEvent.summary,
                     description=iEvent.description,
