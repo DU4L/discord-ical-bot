@@ -53,7 +53,7 @@ class Calendar(Cog, name="iCal Creator"):
         server_events = await self.get_guild_events()
         for iEvent in iCal_events:
             if iEvent.summary not in [event["name"] for event in server_events]:
-                if iEvent.location in ["Discord", "discord"]:
+                if iEvent.location is None or iEvent.location.lower() == "discord" or iEvent.location == "":
                     event_type = 2
                 else:
                     event_type = 3
@@ -66,7 +66,7 @@ class Calendar(Cog, name="iCal Creator"):
                     end_time=iEvent.end.strftime(self.TIME_FORMAT + self.TIME_ZONE),
                     channel_id=self.channel_id,
                     type_id=event_type,
-                    metadata={"location": iEvent.location},
+                    metadata={"location": iEvent.location or "¯\\_(ツ)_/¯"},
                 )
             else:
                 logging.info("Event already exists")
@@ -139,6 +139,7 @@ class Calendar(Cog, name="iCal Creator"):
                 async with session.post(
                     self.event_url, data=dumps(event_data)
                 ) as response:
+                    logging.info(response)
                     response.raise_for_status()
                     logging.info("Created event successfully")
 
